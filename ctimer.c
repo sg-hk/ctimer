@@ -43,10 +43,10 @@ void play_sound(const char *sound_file) {
 	}
 }
 
-void countdown_timer(unsigned int seconds) 
+void countdown_timer(int seconds) 
 {
-	for (unsigned int elapsed = 0; elapsed < seconds; ++elapsed) {
-		unsigned int remaining = seconds - elapsed;
+	for (int elapsed = 0; elapsed < seconds; ++elapsed) {
+		int remaining = seconds - elapsed;
 		printf("\r%02u:%02u", remaining / 60, remaining % 60);
 		fflush(stdout);
 		sleep(1);
@@ -54,7 +54,7 @@ void countdown_timer(unsigned int seconds)
 	printf("\n");
 }
 
-void notify(char *mode, unsigned int n_sessions, unsigned int total_time, unsigned int work_time, unsigned int i, unsigned int ptime, unsigned int sbktime, unsigned int lbktime)
+void notify(char *mode, int n_sessions, int total_time, int work_time, int i, int ptime, int sbktime, int lbktime)
 {
 	/* sends notification to stdout
 	   and plays the relevant bell */
@@ -101,12 +101,12 @@ void ex_cmd(const char *command, char *const argv[])
         exit(EXIT_FAILURE);
 }
 
-void pomodoro_timer(unsigned int n_sessions, unsigned int ptime, unsigned int sbktime, unsigned int lbktime, unsigned int frequency)
+void pomodoro_timer(int n_sessions, int ptime, int sbktime, int lbktime, int frequency)
 {
-        unsigned int full_n_sessions = (n_sessions - 1) / frequency;
-        unsigned int work_time = ptime * n_sessions;
-        unsigned int total_time = work_time + lbktime * full_n_sessions + sbktime * (n_sessions - 1 - full_n_sessions);
-        unsigned int i = 0;
+        int full_n_sessions = (n_sessions - 1) / frequency;
+        int work_time = ptime * n_sessions;
+        int total_time = work_time + lbktime * full_n_sessions + sbktime * (n_sessions - 1 - full_n_sessions);
+        int i = 0;
         char *mode = NULL;
 
         for (i = 0; i < n_sessions; ++i) {
@@ -138,11 +138,11 @@ void pomodoro_timer(unsigned int n_sessions, unsigned int ptime, unsigned int sb
 
 int main(int argc, char *argv[])
 {
-        unsigned int n_sessions = 5;
-        unsigned int ptime = 25;
-        unsigned int sbktime = 5;
-        unsigned int lbktime = 15;
-        unsigned int frequency = 4;
+        int n_sessions = 5;
+        int ptime = 25;
+        int sbktime = 5;
+        int lbktime = 15;
+        int frequency = 4;
 
         int opt;
         while ((opt = getopt(argc, argv, "n:t:s:l:f:")) != -1) {
