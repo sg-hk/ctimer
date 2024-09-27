@@ -14,4 +14,4 @@ Sound files made by me using online synth and Audacity. They are found in ~/.loc
 
 To install:
 
-'''make && make install'''
+```make && make install```
