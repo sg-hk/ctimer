@@ -64,7 +64,7 @@ void notify
         const char *username = getenv("USER");
 	const char *home = getenv("HOME");
 	if (!username || !home) {
-		fprintf(stderr, "Error: USER or HOME env vars not set.\n");
+		fprintf(stderr, "Error: USER or HOME env vars not set\n");
 		return;
 	}
 
@@ -74,7 +74,6 @@ void notify
  	snprintf(end_path, sizeof(end_path), "%s%s%s", home, CTIMER, "end.mp3");
 	const char *end = end_path;
 	snprintf(finished_path, sizeof(finished_path), "%s%s%s", home, CTIMER, "finished.mp3");
-#include <time.h>
 	const char *finished = finished_path;
 
         if (strcmp(mode, "first_pomodoro") == 0) {
@@ -123,7 +122,6 @@ void pomodoro_timer
         int total_time = work_time + lbktime * full_n_sessions + sbktime * (n_sessions - 1 - full_n_sessions);
         int i = 0;
         char *mode = NULL;
-
 	time_t today = time(NULL);
 
         for (i = 0; i < n_sessions; ++i) {
@@ -186,7 +184,7 @@ int main
 			category = optarg;
 			break;
                 default:
-                        fprintf(stderr, "Usage: %s [-n n_sessions] [-t pomodoro time] [-s short break time] [-l long break time] [-f frequency (sessions before a long break)] [-c category (for logging)]\n", argv[0]);
+                        fprintf(stderr, "Usage: %s\n   [-n number of pomodoros]\n   [-t pomodoro time]\n   [-s short break time]\n   [-l long break time]\n   [-f frequency (sessions before a long break)]\n   [-c category (for logging)]\n", argv[0]);
                         return 1;
                 }
         }
