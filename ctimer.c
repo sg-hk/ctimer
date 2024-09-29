@@ -1,8 +1,5 @@
-/*	ctimer by sg-hk
-	pomodoro timer in C
-	works as standalone app
-	or integrated within:
-	tiramisu, creek, ...	*/
+/* ctimer v1.0 by sg-hk
+   simple pomodoro timer with logs */
 
 #include <errno.h>
 #include <fcntl.h>
@@ -12,11 +9,14 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
 
 #define CTIMER "/.local/share/ctimer/"
 
-void play_sound(const char *sound_file) {
+void play_sound
+(const char *sound_file) 
+{
 	pid_t pid = fork();
 
 	if (pid == -1) {
@@ -43,7 +43,8 @@ void play_sound(const char *sound_file) {
 	}
 }
 
-void countdown_timer(int seconds) 
+void countdown_timer
+(int seconds) 
 {
 	for (int elapsed = 0; elapsed < seconds; ++elapsed) {
 		int remaining = seconds - elapsed;
@@ -54,7 +55,8 @@ void countdown_timer(int seconds)
 	printf("\n");
 }
 
-void notify(char *mode, int n_sessions, int total_time, int work_time, int i, int ptime, int sbktime, int lbktime)
+void notify
+(char *mode, int n_sessions, int total_time, int work_time, int i, int ptime, int sbktime, int lbktime)
 {
 	/* sends notification to stdout
 	   and plays the relevant bell */
@@ -72,6 +74,7 @@ void notify(char *mode, int n_sessions, int total_time, int work_time, int i, in
  	snprintf(end_path, sizeof(end_path), "%s%s%s", home, CTIMER, "end.mp3");
 	const char *end = end_path;
 	snprintf(finished_path, sizeof(finished_path), "%s%s%s", home, CTIMER, "finished.mp3");
+#include <time.h>
 	const char *finished = finished_path;
 
         if (strcmp(mode, "first_pomodoro") == 0) {
@@ -94,20 +97,34 @@ void notify(char *mode, int n_sessions, int total_time, int work_time, int i, in
         }
 }
 
-void ex_cmd(const char *command, char *const argv[])
+void log_pomodoro
+(int ptime, char *category, time_t today)
 {
-        execvp(command, argv);
-        perror("Exec error: ");
-        exit(EXIT_FAILURE);
+
+	char path[128];
+	snprintf(path, sizeof(path), "%s%s%s", getenv("HOME"), CTIMER, "pomodoros.log");
+	char entry[64];
+	snprintf(entry, sizeof(entry), "%d|%s|%ld\n", ptime, category, today);
+
+	FILE *log = fopen(path, "a+");
+	fputs(entry, log);
+
+	if (fclose(log) != 0) {
+		perror("Failed to close the log file");
+		exit(EXIT_FAILURE);
+	}
 }
 
-void pomodoro_timer(int n_sessions, int ptime, int sbktime, int lbktime, int frequency)
+void pomodoro_timer
+(int n_sessions, int ptime, int sbktime, int lbktime, int frequency, char *category)
 {
         int full_n_sessions = (n_sessions - 1) / frequency;
         int work_time = ptime * n_sessions;
         int total_time = work_time + lbktime * full_n_sessions + sbktime * (n_sessions - 1 - full_n_sessions);
         int i = 0;
         char *mode = NULL;
+
+	time_t today = time(NULL);
 
         for (i = 0; i < n_sessions; ++i) {
                 if (i == 0) {
@@ -118,6 +135,7 @@ void pomodoro_timer(int n_sessions, int ptime, int sbktime, int lbktime, int fre
 
                 notify(mode, n_sessions, total_time, work_time, i, ptime, 0, 0);
 		countdown_timer(ptime * 60);
+		log_pomodoro(ptime, category, today);
 
                 if (i < n_sessions - 1) {
                         if ((i + 1) % frequency == 0) {
@@ -136,13 +154,15 @@ void pomodoro_timer(int n_sessions, int ptime, int sbktime, int lbktime, int fre
         notify(mode, 0, 0, 0, 0, 0, 0, 0);
 }
 
-int main(int argc, char *argv[])
+int main
+(int argc, char *argv[])
 {
         int n_sessions = 5;
         int ptime = 25;
         int sbktime = 5;
         int lbktime = 15;
         int frequency = 4;
+	char *category = NULL;
 
         int opt;
         while ((opt = getopt(argc, argv, "n:t:s:l:f:")) != -1) {
@@ -162,13 +182,16 @@ int main(int argc, char *argv[])
                 case 'f':
                         frequency = atoi(optarg);
                         break;
+		case 'c':
+			category = optarg;
+			break;
                 default:
-                        fprintf(stderr, "Usage: %s [-n n_sessions] [-t pomodoro time] [-s short break time] [-l long break time] [-f frequency (sessions before a long break)]\n", argv[0]);
+                        fprintf(stderr, "Usage: %s [-n n_sessions] [-t pomodoro time] [-s short break time] [-l long break time] [-f frequency (sessions before a long break)] [-c category (for logging)]\n", argv[0]);
                         return 1;
                 }
         }
 
-        pomodoro_timer(n_sessions, ptime, sbktime, lbktime, frequency);
+        pomodoro_timer(n_sessions, ptime, sbktime, lbktime, frequency, category);
 
         return 0;
 }

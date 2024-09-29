@@ -10,8 +10,45 @@ A minimalistic pomodoro timer that takes on options through flags:
 
 Wayland functionalities will be added later, specifically for river / creek / tiramisu. (App switching, screen locking, notifications in stdout status bar).
 
-Sound files made by me using online synth and Audacity. They are found in ~/.local/share/ctimer.
+Sound files made by me using online synth and Audacity. They are found in ~/.local/share/ctimer. Feel free to change them as you like.
 
 To install:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ```make && make install```
