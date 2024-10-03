@@ -131,18 +131,18 @@ void pomodoro_timer
                         mode = "pomodoro";
                 }
 
-                notify(mode, n_sessions, total_time, work_time, i, ptime, 0, 0);
+                notify(mode, n_sessions, total_time, work_time, i, ptime, sbktime, lbktime);
 		countdown_timer(ptime * 60);
 		log_pomodoro(ptime, category, today);
 
                 if (i < n_sessions - 1) {
                         if ((i + 1) % frequency == 0) {
                                 mode = "long_break";
-	                        notify(mode, n_sessions, 0, 0, i, 0, 0, lbktime);
+			        notify(mode, n_sessions, total_time, work_time, i, ptime, sbktime, lbktime);
 				countdown_timer(lbktime * 60);
                         } else {
                                 mode = "short_break";
-	                        notify(mode, n_sessions, 0, 0, i, 0, sbktime, 0);
+			        notify(mode, n_sessions, total_time, work_time, i, ptime, sbktime, lbktime);
 				countdown_timer(sbktime * 60);
                         }
                 }
@@ -185,7 +185,7 @@ int main
 			break;
                 default:
                         fprintf(stderr, "Usage: %s\n   [-n number of pomodoros]\n   [-t pomodoro time]\n   [-s short break time]\n   [-l long break time]\n   [-f frequency (sessions before a long break)]\n   [-c category (for logging)]\n", argv[0]);
-                        return 1;
+                        exit(EXIT_FAILURE);
                 }
         }
 
