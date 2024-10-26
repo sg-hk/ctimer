@@ -97,8 +97,9 @@ void notify
 }
 
 void log_pomodoro
-(int ptime, char *category, time_t today)
+(int ptime, char *category)
 {
+	time_t today = time(NULL);
 
 	char path[128];
 	snprintf(path, sizeof(path), "%s%s%s", getenv("HOME"), CTIMER, "pomodoros.log");
@@ -122,7 +123,6 @@ void pomodoro_timer
         int total_time = work_time + lbktime * full_n_sessions + sbktime * (n_sessions - 1 - full_n_sessions);
         int i = 0;
         char *mode = NULL;
-	time_t today = time(NULL);
 
         for (i = 0; i < n_sessions; ++i) {
                 if (i == 0) {
@@ -133,7 +133,7 @@ void pomodoro_timer
 
                 notify(mode, n_sessions, total_time, work_time, i, ptime, sbktime, lbktime);
 		countdown_timer(ptime * 60);
-		log_pomodoro(ptime, category, today);
+		log_pomodoro(ptime, category);
 
                 if (i < n_sessions - 1) {
                         if ((i + 1) % frequency == 0) {
@@ -163,7 +163,7 @@ int main
 	char *category = NULL;
 
         int opt;
-        while ((opt = getopt(argc, argv, "n:t:s:l:f:")) != -1) {
+        while ((opt = getopt(argc, argv, "n:t:s:l:f:c:")) != -1) {
                 switch (opt) {
                 case 'n':
                         n_sessions = atoi(optarg);
