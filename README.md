@@ -9,5 +9,3 @@ Logs are in the same directory.
 
 To install:
 ```make && make install```
-
-Edit Makefile appropriately for Linux vs MacOS differences.

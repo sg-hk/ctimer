@@ -21,7 +21,7 @@ setup:
 
 install: $(TARGET)
 	@echo "You may need superuser privileges to install to $(BIN_DIR)"
-	sudo cp $(TARGET) $(BIN_DIR)
+	sudo mv $(TARGET) $(BIN_DIR)
 	sudo cp $(MP3_FILES) $(DEST_DIR)
 	sudo cp $(MAN_PAGE) $(MAN_DIR)
 	sudo mandb

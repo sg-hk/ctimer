@@ -67,7 +67,8 @@ void countdown_timer
 }
 
 void notify
-(char *mode, int n_sessions, int total_time, int work_time, int i, int ptime, int sbktime, int lbktime)
+(char *mode, int n_sessions, int total_time, int work_time, 
+ int i, int ptime, int sbktime, int lbktime)
 {
 	const char *username = getenv("USER");
 	const char *home = getenv("HOME");
@@ -125,7 +126,8 @@ void log_pomodoro
 }
 
 void pomodoro_timer
-(int n_sessions, int ptime, int sbktime, int lbktime, int frequency, char *category, int ttime)
+(int n_sessions, int ptime, int sbktime, int lbktime, 
+ int frequency, char *category, int ttime)
 {
 	int i = 0, work_time = 0;
 	char *mode = NULL;
@@ -179,6 +181,7 @@ void query_logs()
         exit(EXIT_FAILURE);
     }
 
+    // for weekly calculations
     time_t today = time(NULL);
     struct tm *timeinfo = localtime(&today);
     int current_day_of_week = timeinfo->tm_wday; 
@@ -186,9 +189,7 @@ void query_logs()
     time_t last_monday = today - days_since_monday * 86400; 
     time_t next_monday = last_monday + 7 * 86400;        
 
-    int minutes_per_day[7] = {0}; 
-
-    // GATHER DATA
+    // initialize vars
     char line[128];
     int log_count = 0;
     int buffer = 128;
@@ -197,7 +198,24 @@ void query_logs()
         perror("Failed to allocate memory to log struct");
         exit(EXIT_FAILURE);
     }
+    int w_mins = 0;
+    int w_cat_c = 0;
+    int cat_buffer = 7;
+    CatTimePair *w_cat_time = malloc(cat_buffer * sizeof(CatTimePair));
+    if (!w_cat_time) {
+        perror("Failed to allocate memory to category list");
+        exit(EXIT_FAILURE);
+    }
+    int t_mins = 0;
+    int t_cat_c = 0;
+    CatTimePair *t_cat_time = malloc(cat_buffer * sizeof(CatTimePair));
+    if (!t_cat_time) {
+        perror("Failed to allocate memory to category list");
+        exit(EXIT_FAILURE);
+    }
+    int minutes_per_day[7] = {0}; 
 
+    // 1. fill up logs_full
     while (fgets(line, sizeof(line), log) != NULL) {
         int minutes;
         char category[64];
@@ -220,24 +238,7 @@ void query_logs()
         }
     }
 
-    int w_mins = 0;
-    int w_cat_c = 0;
-    int cat_buffer = 7;
-    CatTimePair *w_cat_time = malloc(cat_buffer * sizeof(CatTimePair));
-    if (!w_cat_time) {
-        perror("Failed to allocate memory to category list");
-        exit(EXIT_FAILURE);
-    }
-
-    int t_mins = 0;
-    int t_cat_c = 0;
-    CatTimePair *t_cat_time = malloc(cat_buffer * sizeof(CatTimePair));
-    if (!t_cat_time) {
-        perror("Failed to allocate memory to category list");
-        exit(EXIT_FAILURE);
-    }
-
-    // process logs_full to accumulate data
+    // 2. process logs_full
     for (int i = 0; i < log_count; ++i) {
         t_mins += logs_full[i].minutes;
 
@@ -263,7 +264,7 @@ void query_logs()
             t_cat_c++;
         }
 
-        // check if current week
+        // 2.a. process current week's portion of logs_full
         if (logs_full[i].timestamp >= last_monday && logs_full[i].timestamp < next_monday) {
             w_mins += logs_full[i].minutes;
 
@@ -297,22 +298,8 @@ void query_logs()
         }
     }
 
-    // PRINT WEEKLY TOTALS
-    printf("\nTOTALS: WEEKLY\n");
-    printf("--------------\n");
-    if (w_cat_c == 0) {
-        printf("No logs found for the week\n");
-    } else {
-        printf("Total studied: %02dh:%02dm\n", w_mins / 60, w_mins % 60);
-        for (int i = 0; i < w_cat_c; ++i) {
-            printf("\t%s: %02dh:%02dm\n",
-                   w_cat_time[i].category, w_cat_time[i].minutes / 60, w_cat_time[i].minutes % 60);
-            free(w_cat_time[i].category);
-        }
-    }
-    free(w_cat_time);
-
-    // PRINT ALL-TIME TOTALS
+    // 3. print totals
+    // 3.a. all-time
     printf("\nTOTALS: ALL-TIME\n");
     printf("----------------\n");
     printf("Total studied: %02dh:%02dm\n", t_mins / 60, t_mins % 60);
@@ -336,7 +323,22 @@ void query_logs()
     }
     free(t_cat_time);
 
-    // PRINT HISTOGRAM
+    // 3.b. weekly
+    printf("\nTOTALS: WEEKLY\n");
+    printf("--------------\n");
+    if (w_cat_c == 0) {
+        printf("No logs found for the week\n");
+    } else {
+        printf("Total studied: %02dh:%02dm\n", w_mins / 60, w_mins % 60);
+        for (int i = 0; i < w_cat_c; ++i) {
+            printf("\t%s: %02dh:%02dm\n",
+                   w_cat_time[i].category, w_cat_time[i].minutes / 60, w_cat_time[i].minutes % 60);
+            free(w_cat_time[i].category);
+        }
+    }
+    free(w_cat_time);
+
+    // 3.c. weekly histogram
     printf("\nHISTOGRAM\n");
     printf("---------\n");
     const char *weekdays[] = {"Monday", "Tuesday", "Wednesday",
