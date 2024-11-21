@@ -1,0 +1,43 @@
+.TH CTIMER 1 "2024-11-21" "v1.1" "ctimer Manual"
+.SH NAME
+ctimer \- simple pomodoro timer with session logs.
+.SH SYNOPSIS
+.B ctimer
+.RI [ options ]
+.SH DESCRIPTION
+.B ctimer
+is a simple command-line based pomodoro timer that helps manage work and break cycles, as well as keep track of past sessions in a log. The timer notifies the user at the start and end of work periods and breaks, playing a sound. Logs of each session are recorded and, upon completion of a study session, queried for statistics.
+
+A debt of gratitude is owed to Tatsumoto and his nearly-eponymous pomodoro shell script (tatsumato). This started as an adaptation of the script, although it is now fairly different in function.
+.SH OPTIONS
+.TP
+.B \-n
+Specify the number of pomodoro sessions.
+.TP
+.B \-t
+Set the duration of each pomodoro session in minutes.
+.TP
+.B \-T
+Set the total target session time in minutes. This overrides individual session settings.
+.TP
+.B \-s
+Duration of short breaks in minutes.
+.TP
+.B \-l
+Duration of long breaks in minutes.
+.TP
+.B \-f
+Frequency of pomodoros before a long break occurs.
+.TP
+.B \-c
+Category for logging the session, useful for tracking different types of tasks.
+.TP
+.B \-h
+Display help and exit.
+.SH EXAMPLES
+To start a session with 5 pomodoros, each lasting 25 minutes, with short breaks of 5 minutes and long breaks every 4 sessions lasting 15 minutes:
+.nf
+\fBctimer -n 5 -t 25 -s 5 -l 15 -f 4\fR
+.fi
+.SH AUTHOR
+Written by sg-hk.
