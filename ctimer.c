@@ -25,11 +25,6 @@ typedef struct CatTimePair {
 	int minutes;
 } CatTimePair;
 
-void handle_child(int sig) {
-    int status;
-    while (waitpid((pid_t)(-1), &status, WNOHANG) > 0) {}
-}
-
 void play_sound
 (const char *sound_file) 
 {
@@ -374,7 +369,7 @@ void query_logs()
             }
         }
     } else {
-        printf("No logs written this week.\n");
+        printf("No logs found for the week\n");
     }
 
     free(logs_full);
