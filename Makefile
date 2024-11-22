@@ -1,5 +1,5 @@
 C=gcc
-CFLAGS=-O2 -Wall -Wextra -std=c11
+CFLAGS=-O2 -Wall -Wextra -std=c23
 TARGET=ctimer
 SOURCES=ctimer.c
 MP3_FILES=start.mp3 end.mp3 finished.mp3

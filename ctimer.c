@@ -3,7 +3,6 @@
 
 #include <fcntl.h>
 #include <getopt.h>
-#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -46,12 +45,17 @@ void play_sound
 			exit(EXIT_FAILURE);
 		}
 
+        // redirect mpv stdout to /dev/null
 		dup2(devNull, STDOUT_FILENO);
+        close(devNull);
 
 		execlp("mpv", "mpv", "--no-video", "--quiet", sound_file, (char *)NULL);
 		perror("mpv exec error: ");
 		exit(EXIT_FAILURE);
-	}
+	} else {
+        int status;
+        waitpid(pid, &status, WNOHANG);
+    }
 }
 
 void countdown_timer
@@ -342,7 +346,7 @@ void query_logs()
     printf("\nHISTOGRAM\n");
     printf("---------\n");
     const char *weekdays[] = {"Monday", "Tuesday", "Wednesday",
-                              "Thursday", "Friday", "Saturday", "Sunday"};
+    "Thursday", "Friday", "Saturday", "Sunday"};
 
     int max_len = strlen("Wednesday");
 
@@ -441,12 +445,6 @@ int main
 				printhelp(argv[0]);
 		}
 	}
-
-	// code to prevent zombie child (from mpv fork)
-	struct sigaction sa;
-	memset(&sa, 0, sizeof(sa));
-	sa.sa_handler = &handle_child;
-	sigaction(SIGCHLD, &sa, NULL);
 
 	// the actual program
 	pomodoro_timer(n_sessions, ptime, sbktime, lbktime, frequency, category, ttime);
