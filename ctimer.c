@@ -411,7 +411,7 @@ int main
 	char *category = NULL;
 
 	int opt;
-	while ((opt = getopt(argc, argv, "n:t:T:s:l:f:c:")) != -1) {
+	while ((opt = getopt(argc, argv, "n:t:T:s:l:f:c:h")) != -1) {
 		switch (opt) {
 			case 'n':
 				n_sessions = atoi(optarg);
