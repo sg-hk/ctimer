@@ -14,3 +14,4 @@ On MacOS change std=23 to std=2x in the Makefile.
 
 to do:
 * timezone logic in log queries
+* louder mp3s

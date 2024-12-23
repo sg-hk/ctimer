@@ -40,17 +40,17 @@ void play_sound
 			exit(EXIT_FAILURE);
 		}
 
-        // redirect mpv stdout to /dev/null
+		// redirect mpv stdout to /dev/null
 		dup2(devNull, STDOUT_FILENO);
-        close(devNull);
+		close(devNull);
 
 		execlp("mpv", "mpv", "--no-video", "--quiet", sound_file, (char *)NULL);
 		perror("mpv exec error: ");
 		exit(EXIT_FAILURE);
 	} else {
-        int status;
-        waitpid(pid, &status, WNOHANG);
-    }
+		int status;
+		waitpid(pid, &status, WNOHANG);
+	}
 }
 
 void countdown_timer
