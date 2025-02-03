@@ -1,5 +1,5 @@
-/* ctimer v1.1 by sg-hk
-   simple pomodoro timer with logs */
+/* ctimer v1.2 by sg-hk
+   simple pomodoro timer for dwm bar */
 
 #include <fcntl.h>
 #include <getopt.h>
@@ -14,436 +14,239 @@
 
 #define CTIMER "/.local/share/ctimer/"
 
-typedef struct LogData {
-	int minutes;
-	char category[64];
-	long timestamp;
-} LogData;
+char start_msg[512], over_msg[128];
+char startfp[128], endfp[128], overfp[128];
 
-typedef struct CatTimePair {
-	char *category;
-	int minutes;
-} CatTimePair;
-
-void play_sound
-(const char *sound_file) 
+void initialize_strings
+(int n, int ptime, int sbktime, int lbktime, int ttime, int wtime)
 {
-	pid_t pid = fork();
+        /* audio paths */
+        snprintf(startfp, sizeof(startfp), "%s%s%s", 
+                        getenv("HOME"), CTIMER, "start.mp3");
+        snprintf(endfp, sizeof(endfp), "%s%s%s", 
+                        getenv("HOME"), CTIMER, "end.mp3");
+        snprintf(overfp, sizeof(overfp), "%s%s%s", 
+                        getenv("HOME"), CTIMER, "over.mp3");
 
-	if (pid == -1) {
-		perror("mpv fork error: ");
-		exit(EXIT_FAILURE);
-	} else if (pid == 0) {
-		int devNull = open("/dev/null", O_WRONLY);
-		if (devNull == -1) {
-			perror("Failed to open /dev/null");
-			exit(EXIT_FAILURE);
-		}
-
-        // redirect mpv stdout to /dev/null
-		dup2(devNull, STDOUT_FILENO);
-        close(devNull);
-
-		execlp("mpv", "mpv", "--no-video", "--quiet", sound_file, (char *)NULL);
-		perror("mpv exec error: ");
-		exit(EXIT_FAILURE);
-	} else {
-        int status;
-        waitpid(pid, &status, WNOHANG);
-    }
+        /* notifications */
+        snprintf(start_msg, sizeof(start_msg),
+                "Ctimer has started! Good luck\n"
+                "%d pomodoros of %d minutes, with "
+                "short breaks of %d minutes and long breaks of %d minutes\n"
+                "Total session time of %d minutes, of which %d are work",
+                n, ptime, sbktime, lbktime, ttime, wtime);
+        snprintf(over_msg, sizeof(over_msg), 
+                "All %d pomodoros done. It's over, %s\n", 
+                n, getenv("USER"));
 }
 
-void countdown_timer
-(int seconds) 
+void play_sound (const char *filepath)
 {
-	for (int elapsed = 0; elapsed < seconds; ++elapsed) {
-		int remaining = seconds - elapsed;
-		printf("\r%02u:%02u", remaining / 60, remaining % 60);
-		fflush(stdout);
-		sleep(1);
-	}
-	printf("\n");
-}
-
-void notify
-(char *mode, int n_sessions, int total_time, int work_time, 
- int i, int ptime, int sbktime, int lbktime)
-{
-	const char *username = getenv("USER");
-	const char *home = getenv("HOME");
-	if (!username) {
-		fprintf(stderr, "Error: USER env var not set\n");
-		return;
-	}
-	if (!home) {
-		fprintf(stderr, "Error: HOME not set\n");
-		return;
-	}
-
-	char start[128], end[128], finished[128];
-	snprintf(start, sizeof(start), "%s%s%s", home, CTIMER, "start.mp3");
-	snprintf(end, sizeof(end), "%s%s%s", home, CTIMER, "end.mp3");
-	snprintf(finished, sizeof(finished), "%s%s%s", home, CTIMER, "finished.mp3");
-
-	if (strcmp(mode, "first_pomodoro") == 0) {
-		printf("Ctimer has started! Good luck\n");
-		printf("%d pomodoros of %d minutes, with short breaks of %d minutes and long breaks of %d minutes\n", n_sessions, ptime, sbktime, lbktime);
-		printf("Total session time of %d minutes, of which %d are work\n", total_time, work_time);
-		play_sound(start);
-	} else if (strcmp(mode, "pomodoro") == 0) {
-		printf("[%d/%d] pomodoro will last %d minutes\n", i + 1, n_sessions, ptime);
-		play_sound(start);
-	} else if (strcmp(mode, "short_break") == 0) {
-		printf("[%d/%d] break will last %d minutes\n", i + 1, n_sessions - 1, sbktime);
-		play_sound(end);
-	} else if (strcmp(mode, "long_break") == 0) {
-		printf("[%d/%d] break will last %d minutes\n", i + 1, n_sessions - 1, lbktime);
-		play_sound(end);
-	} else if (strcmp(mode, "finished") == 0) {
-		play_sound(finished);
-		printf("All tasks done. Bravo, %s!\n", username);
-	}
-}
-
-void log_pomodoro
-(int ptime, char *category)
-{
-	time_t today = time(NULL);
-
-	char path[128];
-	snprintf(path, sizeof(path), "%s%s%s", getenv("HOME"), CTIMER, "pomodoros.log");
-	char entry[64];
-	snprintf(entry, sizeof(entry), "%d|%s|%ld\n", ptime, category, today);
-
-	FILE *log = fopen(path, "a+");
-	fputs(entry, log);
-
-	if (fclose(log) != 0) {
-		perror("Failed to close the log file");
-		exit(EXIT_FAILURE);
-	}
-}
-
-void pomodoro_timer
-(int n_sessions, int ptime, int sbktime, int lbktime, 
- int frequency, char *category, int ttime)
-{
-	int i = 0, work_time = 0;
-	char *mode = NULL;
-
-	int full_n_sessions = (n_sessions - 1) / frequency;
-
-	if (ttime == 0) {
-		work_time = ptime * n_sessions;
-		ttime = work_time + lbktime * full_n_sessions + sbktime * (n_sessions - 1 - full_n_sessions);
-	} else {
-		ptime = (ttime - lbktime * full_n_sessions - sbktime * (n_sessions - 1 - full_n_sessions)) / n_sessions;	
-		work_time = ptime * n_sessions;
-	}
-
-	for (i = 0; i < n_sessions; ++i) {
-		if (i == 0) {
-			mode = "first_pomodoro";
-		} else {
-			mode = "pomodoro";
-		}
-
-		notify(mode, n_sessions, ttime, work_time, i, ptime, sbktime, lbktime);
-		countdown_timer(ptime * 60);
-		log_pomodoro(ptime, category);
-
-		if (i < n_sessions - 1) {
-			if ((i + 1) % frequency == 0) {
-				mode = "long_break";
-				notify(mode, n_sessions, ttime, work_time, i, ptime, sbktime, lbktime);
-				countdown_timer(lbktime * 60);
-			} else {
-				mode = "short_break";
-				notify(mode, n_sessions, ttime, work_time, i, ptime, sbktime, lbktime);
-				countdown_timer(sbktime * 60);
-			}
-		}
-	}
-
-	mode = "finished";
-	notify(mode, 0, 0, 0, 0, 0, 0, 0);
-}
-
-void query_logs()
-{
-    char path[128];
-    snprintf(path, sizeof(path), "%s%s%s", getenv("HOME"), CTIMER, "pomodoros.log");
-
-    FILE *log = fopen(path, "r");
-    if (!log) {
-        fprintf(stderr, "Error opening log file\n");
-        exit(EXIT_FAILURE);
-    }
-
-    // for weekly calculations
-    time_t today = time(NULL);
-    struct tm *timeinfo = localtime(&today);
-    int current_day_of_week = timeinfo->tm_wday; 
-    int days_since_monday = (current_day_of_week + 6) % 7; 
-    time_t last_monday = today - days_since_monday * 86400; 
-    time_t next_monday = last_monday + 7 * 86400;        
-
-    // initialize vars
-    char line[128];
-    int log_count = 0;
-    int buffer = 128;
-    LogData *logs_full = malloc(buffer * sizeof(LogData));
-    if (!logs_full) {
-        perror("Failed to allocate memory to log struct");
-        exit(EXIT_FAILURE);
-    }
-    int w_mins = 0;
-    int w_cat_c = 0;
-    int cat_buffer = 7;
-    CatTimePair *w_cat_time = malloc(cat_buffer * sizeof(CatTimePair));
-    if (!w_cat_time) {
-        perror("Failed to allocate memory to category list");
-        exit(EXIT_FAILURE);
-    }
-    int t_mins = 0;
-    int t_cat_c = 0;
-    CatTimePair *t_cat_time = malloc(cat_buffer * sizeof(CatTimePair));
-    if (!t_cat_time) {
-        perror("Failed to allocate memory to category list");
-        exit(EXIT_FAILURE);
-    }
-    int minutes_per_day[7] = {0}; 
-
-    // 1. fill up logs_full
-    while (fgets(line, sizeof(line), log) != NULL) {
-        int minutes;
-        char category[64];
-        long log_timestamp;
-        if (sscanf(line, "%d|%63[^|]|%ld", &minutes, category, &log_timestamp) == 3) {
-            if (log_count >= buffer) {
-                buffer *= 2;
-                logs_full = realloc(logs_full, buffer * sizeof(LogData));
-                if (!logs_full) {
-                    perror("Failed to reallocate memory to log struct");
-                    exit(EXIT_FAILURE);
+        pid_t pid = fork();
+        if (pid == -1) {
+                perror("mpv fork");
+                return;
+        } else if (pid == 0) {
+                int dev_null = open("/dev/null", O_WRONLY);
+                if (dev_null == -1) {
+                        perror("Failed to open /dev/null");
+                        return;
                 }
-            }
+                dup2(dev_null, STDOUT_FILENO);
+                close(dev_null);
 
-            logs_full[log_count].minutes = minutes;
-            strncpy(logs_full[log_count].category, category, sizeof(logs_full[log_count].category) - 1);
-            logs_full[log_count].category[sizeof(logs_full[log_count].category) - 1] = '\0';
-            logs_full[log_count].timestamp = (time_t)log_timestamp;
-            log_count++;
-        }
-    }
-
-    // 2. process logs_full
-    for (int i = 0; i < log_count; ++i) {
-        t_mins += logs_full[i].minutes;
-
-        bool match_found = false;
-        for (int j = 0; j < t_cat_c; ++j) {
-            if (strcmp(logs_full[i].category, t_cat_time[j].category) == 0) {
-                match_found = true;
-                t_cat_time[j].minutes += logs_full[i].minutes;
-                break;
-            }
-        }
-        if (!match_found) {
-            if (t_cat_c >= cat_buffer) {
-                cat_buffer *= 2;
-                t_cat_time = realloc(t_cat_time, cat_buffer * sizeof(CatTimePair));
-                if (!t_cat_time) {
-                    perror("Failed to reallocate memory to category list");
-                    exit(EXIT_FAILURE);
-                }
-            }
-            t_cat_time[t_cat_c].category = strdup(logs_full[i].category);
-            t_cat_time[t_cat_c].minutes = logs_full[i].minutes;
-            t_cat_c++;
-        }
-
-        // 2.a. process current week's portion of logs_full
-        if (logs_full[i].timestamp >= last_monday && logs_full[i].timestamp < next_monday) {
-            w_mins += logs_full[i].minutes;
-
-            match_found = false;
-            for (int j = 0; j < w_cat_c; ++j) {
-                if (strcmp(logs_full[i].category, w_cat_time[j].category) == 0) {
-                    match_found = true;
-                    w_cat_time[j].minutes += logs_full[i].minutes;
-                    break;
-                }
-            }
-            if (!match_found) {
-                if (w_cat_c >= cat_buffer) {
-                    cat_buffer *= 2;
-                    w_cat_time = realloc(w_cat_time, cat_buffer * sizeof(CatTimePair));
-                    if (!w_cat_time) {
-                        perror("Failed to reallocate memory to category list");
-                        exit(EXIT_FAILURE);
-                    }
-                }
-                printf("New category [%s] found\n", logs_full[i].category);
-                w_cat_time[w_cat_c].category = strdup(logs_full[i].category);
-                w_cat_time[w_cat_c].minutes = logs_full[i].minutes;
-                w_cat_c++;
-            }
-
-            struct tm *log_time = localtime(&logs_full[i].timestamp);
-            int log_day_of_week = log_time->tm_wday; // 0 = Sunday, 6 = Saturday
-            int index = (log_day_of_week + 6) % 7;   // 0 = Monday, 6 = Sunday
-            minutes_per_day[index] += logs_full[i].minutes;
-        }
-    }
-
-    // 3. print totals
-    // 3.a. all-time
-    printf("\nTOTALS: ALL-TIME\n");
-    printf("----------------\n");
-    printf("Total studied: %02dh:%02dm\n", t_mins / 60, t_mins % 60);
-    int line_len = strlen("Total studied");
-    for (int i = 0; i < t_cat_c; ++i) {
-        int cat_len = strlen(t_cat_time[i].category);
-        int total_pad = line_len - cat_len;
-        if (total_pad > 0) {
-            printf("%*s%s: %02dh:%02dm\n",
-                   total_pad, "",
-                   t_cat_time[i].category,
-                   t_cat_time[i].minutes / 60,
-                   t_cat_time[i].minutes % 60);
+                execlp("mpv", "mpv", filepath);
+                perror("Error executing mpv command");
+                return;
         } else {
-            printf("\t%s: %02dh:%02dm\n",
-                   t_cat_time[i].category,
-                   t_cat_time[i].minutes / 60,
-                   t_cat_time[i].minutes % 60);
+                int status;
+                waitpid(pid, &status, WNOHANG);
         }
-        free(t_cat_time[i].category);
-    }
-    free(t_cat_time);
+}
 
-    // 3.b. weekly
-    printf("\nTOTALS: WEEKLY\n");
-    printf("--------------\n");
-    if (w_cat_c == 0) {
-        printf("No logs found for the week\n");
-    } else {
-        printf("Total studied: %02dh:%02dm\n", w_mins / 60, w_mins % 60);
-        for (int i = 0; i < w_cat_c; ++i) {
-            printf("\t%s: %02dh:%02dm\n",
-                   w_cat_time[i].category, w_cat_time[i].minutes / 60, w_cat_time[i].minutes % 60);
-            free(w_cat_time[i].category);
+void herbe (char *msg)
+{
+        if (strlen(msg) >= 500) {
+                fprintf(stderr, "string [%s] too long\n", msg);
+                return;
         }
-    }
-    free(w_cat_time);
-
-    // 3.c. weekly histogram
-    printf("\nHISTOGRAM\n");
-    printf("---------\n");
-    const char *weekdays[] = {"Monday", "Tuesday", "Wednesday",
-    "Thursday", "Friday", "Saturday", "Sunday"};
-
-    int max_len = strlen("Wednesday");
-
-    int max_minutes = 0;
-    for (int i = 0; i < 7; i++) {
-        if (minutes_per_day[i] > max_minutes) {
-            max_minutes = minutes_per_day[i];
+        char cmd[512];
+        snprintf(cmd, sizeof(cmd), "herbe '%s'", msg);
+        pid_t pid = fork(); 
+        if (pid == -1) {
+                perror("herbe fork");
+                return;
+        } else if (pid == 0) {
+                execl("/bin/sh", "sh", "-c", cmd, (char*)NULL);
+                perror("execl");
+                return;
+        } else {
+                int status;
+                waitpid(pid, &status, WNOHANG);
         }
-    }
+}
 
-    if (max_minutes > 0) {
-        int total_days = days_since_monday + 1; 
-        for (int i = 0; i < total_days; i++) {
-            int padding = max_len - strlen(weekdays[i]);
-            printf("%*s%s: ", padding, "", weekdays[i]);
-
-            int num_hashes = (minutes_per_day[i] * 50) / max_minutes;
-            for (int j = 0; j < num_hashes; j++) {
-                printf("#");
-            }
-            if (minutes_per_day[i] > 0) {
-                printf(" (%d minutes)\n", minutes_per_day[i]);
-            } else {
-                printf("\n");
-            }
+void countdown_timer (int seconds) 
+{
+        for (int elapsed = 0; elapsed < seconds; ++elapsed) {
+                int remaining = seconds - elapsed;
+                printf("\r%02u:%02u", remaining / 60, remaining % 60);
+                fflush(stdout);
+                sleep(1);
         }
-    } else {
-        printf("No logs found for the week\n");
-    }
+}
 
-    free(logs_full);
-    if (fclose(log) != 0) {
-        perror("Failed to close the log file");
+
+void log_pomodoro (int ptime, char *category)
+{
+        time_t now = time(NULL);
+        struct tm *t = localtime(&now);
+        int year = t->tm_year+1900;
+        int month = t->tm_mon+1;
+        int day = t->tm_mday;
+        char date[11];
+        snprintf(date, sizeof(date), "%04d-%02d-%02d", year, month, day);
+
+        char path[128];
+        snprintf(path, sizeof(path), "%s%s%s%s", 
+                        getenv("HOME"), CTIMER, date, "_pomodoros.log");
+        FILE *log = fopen(path, "a+");
+        if (!log) { perror("error opening log"); return; }
+
+        char entry[64];
+        snprintf(entry, sizeof(entry), "%d|%s|%d:%d\n", 
+                        ptime, category, t->tm_hour, t->tm_min);
+        fputs(entry, log);
+        fclose(log);
+}
+
+void pomodoro (int n, int ptime, int sbktime, int lbktime, 
+ int frq, char *category, int ttime, int wtime)
+{
+        for (int i = 0; i < n; ++i) {
+                play_sound(startfp);
+                if (i == 0) {
+                        /* first pomodoro, welcome message */
+                        herbe(start_msg);
+                } else {
+                        /* dynamic message */
+                        char pom_msg[128];
+                        snprintf(pom_msg, sizeof(pom_msg),
+                                "[%d/%d] pomodoro will last %d minutes",
+                                i + 1, n, ptime);
+                        herbe(pom_msg);
+                }
+
+                countdown_timer(ptime * 60);
+
+                log_pomodoro(ptime, category);
+                /* check if end of session */
+                if (i == n - 1) {
+                        play_sound(overfp);
+                        herbe(over_msg);
+                        return;
+                }
+
+                /* otherwise it's a break */
+                play_sound(endfp);
+                char bk_msg[128];
+                if ((i + 1) % frq == 0) {
+                        snprintf(bk_msg, sizeof(bk_msg), 
+                                "[%d/%d] long break will last %d minutes\n", 
+                                i + 1, n - 1, lbktime);
+                        herbe(bk_msg);
+                        countdown_timer(lbktime * 60);
+                } else {
+                        snprintf(bk_msg, sizeof(bk_msg), 
+                                "[%d/%d] short break will last %d minutes\n", 
+                                i + 1, n - 1, sbktime);
+                        herbe(bk_msg);
+                        countdown_timer(sbktime * 60);
+                }
+        }
+}
+
+void printhelp (char *argv_0)
+{
+        fprintf(stderr,
+                        "Usage: %s\n"
+                        "   [-n number of pomodoros]\n"
+                        "   [-t pomodoro time]\n"
+                        "   [-T target session time]\n"
+                        "   [-s short break time]\n"
+                        "   [-l long break time]\n"
+                        "   [-f frq (sessions before a long break)]\n"
+                        "   [-c category (for logging)]\n"
+                        "   [-h to print this message and exit]\n"
+                        "Use man ctimer for more detailed information\n"
+                        "Default: 5 pomodoros of 25 minutes, 5 then 15m breaks",
+                        argv_0);
         exit(EXIT_FAILURE);
-    }
 }
 
-void printhelp
-(char *argv_0)
+int main (int argc, char **argv)
 {
+        int n = 5;
+        int ptime = 25;
+        int ttime = 0;
+        int sbktime = 5;
+        int lbktime = 15;
+        int frq = 4;
+        char *category = NULL;
 
-	fprintf(stderr,
-			"Usage: %s\n"
-			"   [-n number of pomodoros]\n"
-			"   [-t pomodoro time]\n"
-			"   [-T target session time]\n"
-			"   [-s short break time]\n"
-			"   [-l long break time]\n"
-			"   [-f frequency (sessions before a long break)]\n"
-			"   [-c category (for logging)]\n"
-			"   [-h to print this message and exit]\n"
-			"Use man ctimer for more detailed information\n"
-			"Default: 5 pomodoros of 25 minutes with cycles of 4/1 of 5/15m breaks\n",
-			argv_0);
-	exit(EXIT_FAILURE);
-}
+        int opt;
+        while ((opt = getopt(argc, argv, "n:t:T:s:l:f:c:")) != -1) {
+                switch (opt) {
+                        case 'n':
+                                n = atoi(optarg);
+                                break;
+                        case 't':
+                                ptime = atoi(optarg);
+                                break;
+                        case 'T':
+                                ttime = atoi(optarg);
+                                break;
+                        case 's':
+                                sbktime = atoi(optarg);
+                                break;
+                        case 'l':
+                                lbktime = atoi(optarg);
+                                break;
+                        case 'f':
+                                frq = atoi(optarg);
+                                break;
+                        case 'c':
+                                category = optarg;
+                                break;
+                        case 'h':
+                                printhelp(argv[0]);
+                        default:
+                                printhelp(argv[0]);
+                }
+        }
 
-int main
-(int argc, char *argv[])
-{
-	int n_sessions = 5;
-	int ptime = 25;
-	int ttime = 0;
-	int sbktime = 5;
-	int lbktime = 15;
-	int frequency = 4;
-	char *category = NULL;
+        /* derive rest of integers */
+        int n_lbk = (n - 1) / frq; // -1 because no break at end
+        int wtime;
+        if (ttime != 0 && ptime != 25) {
+                /* cannot determine custom total time AND custom pom time */
+                return 1;
+        } else if (ttime == 0) {
+                /* custom pom time */
+                wtime = ptime * n;
+                ttime = wtime + lbktime * n_lbk + sbktime * (n - 1 - n_lbk);
+        } else {
+                /* custom total time */
+                ptime = (ttime - lbktime * n_lbk - sbktime * (n - 1 - n_lbk)) 
+                        / n;	
+                wtime = ptime * n;
+        }
 
-	int opt;
-	while ((opt = getopt(argc, argv, "n:t:T:s:l:f:c:")) != -1) {
-		switch (opt) {
-			case 'n':
-				n_sessions = atoi(optarg);
-				break;
-			case 't':
-				ptime = atoi(optarg);
-				break;
-			case 'T':
-				ttime = atoi(optarg);
-				break;
-			case 's':
-				sbktime = atoi(optarg);
-				break;
-			case 'l':
-				lbktime = atoi(optarg);
-				break;
-			case 'f':
-				frequency = atoi(optarg);
-				break;
-			case 'c':
-				category = optarg;
-				break;
-			case 'h':
-				printhelp(argv[0]);
-			default:
-				printhelp(argv[0]);
-		}
-	}
+        /* create strings accordingly */
+        initialize_strings(n, ptime, sbktime, lbktime, ttime, wtime);
 
-	// the actual program
-	pomodoro_timer(n_sessions, ptime, sbktime, lbktime, frequency, category, ttime);
-	query_logs();
+        /* start */
+        pomodoro(n, ptime, sbktime, lbktime, frq, category, ttime, wtime);
 
-	exit(EXIT_SUCCESS);
+        return 0;
 }

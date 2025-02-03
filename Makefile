@@ -1,8 +1,8 @@
-C=gcc
-CFLAGS=-O2 -Wall -Wextra -std=c23
+C=cc
+CFLAGS=-Wall -Wextra
 TARGET=ctimer
 SOURCES=ctimer.c
-MP3_FILES=start.mp3 end.mp3 finished.mp3
+MP3_FILES=start.mp3 end.mp3 over.mp3
 MAN_PAGE=ctimer.1
 DEST_DIR=$(HOME)/.local/share/ctimer
 BIN_DIR=/usr/local/bin
