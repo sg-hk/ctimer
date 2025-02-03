@@ -14,7 +14,8 @@ To install:
 
 
 You could do the following to get the countdown in your status bar:
-```mkfifo /tmp/ctimer
+```
+mkfifo /tmp/ctimer
 ctimer > /tmp/ctimer &
 CTIMER = $(tail -f /tmp/ctimer)
 xsetroot -name "$CTIMER"
