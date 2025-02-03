@@ -90,7 +90,7 @@ void countdown_timer (int seconds)
 {
         for (int elapsed = 0; elapsed < seconds; ++elapsed) {
                 int remaining = seconds - elapsed;
-                printf("\r%02u:%02u", remaining / 60, remaining % 60);
+                printf("\r%02u:%02u\n", remaining / 60, remaining % 60);
                 fflush(stdout);
                 sleep(1);
         }
