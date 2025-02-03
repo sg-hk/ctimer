@@ -1,5 +1,5 @@
 /* ctimer v1.2 by sg-hk
-   simple pomodoro timer for dwm bar */
+   simple pomodoro timer */
 
 #include <fcntl.h>
 #include <getopt.h>
