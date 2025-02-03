@@ -49,14 +49,14 @@ void play_sound (const char *filepath)
         } else if (pid == 0) {
                 int dev_null = open("/dev/null", O_WRONLY);
                 if (dev_null == -1) {
-                        perror("Failed to open /dev/null");
+                        perror("cant open /dev/null");
                         return;
                 }
                 dup2(dev_null, STDOUT_FILENO);
                 close(dev_null);
 
-                execlp("mpv", "mpv", filepath);
-                perror("Error executing mpv command");
+                execlp("mpv", "mpv", filepath, (char*)NULL);
+                perror("mpv cmd");
                 return;
         } else {
                 int status;
@@ -104,7 +104,7 @@ void log_pomodoro (int ptime, char *category)
         int year = t->tm_year+1900;
         int month = t->tm_mon+1;
         int day = t->tm_mday;
-        char date[11];
+        char date[64];
         snprintf(date, sizeof(date), "%04d-%02d-%02d", year, month, day);
 
         char path[128];
@@ -120,8 +120,8 @@ void log_pomodoro (int ptime, char *category)
         fclose(log);
 }
 
-void pomodoro (int n, int ptime, int sbktime, int lbktime, 
- int frq, char *category, int ttime, int wtime)
+void pomodoro 
+(int n, int ptime, int sbktime, int lbktime, int frq, char *category)
 {
         for (int i = 0; i < n; ++i) {
                 play_sound(startfp);
@@ -220,6 +220,7 @@ int main (int argc, char **argv)
                                 break;
                         case 'h':
                                 printhelp(argv[0]);
+                                break;
                         default:
                                 printhelp(argv[0]);
                 }
@@ -246,7 +247,7 @@ int main (int argc, char **argv)
         initialize_strings(n, ptime, sbktime, lbktime, ttime, wtime);
 
         /* start */
-        pomodoro(n, ptime, sbktime, lbktime, frq, category, ttime, wtime);
+        pomodoro(n, ptime, sbktime, lbktime, frq, category);
 
         return 0;
 }
