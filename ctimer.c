@@ -1,4 +1,4 @@
-/* ctimer v1.2 by sg-hk
+/* ctimer v1.3 by sg-hk
    simple pomodoro timer */
 
 #include <fcntl.h>
@@ -14,6 +14,7 @@
 #include <unistd.h>
 
 #define CTIMER "/.local/share/ctimer/"
+#define PIPE_PATH "/tmp/bar/fifo_ctimer"
 
 char start_msg[512], over_msg[128];
 char startfp[128], endfp[128], overfp[128];
@@ -93,17 +94,15 @@ void countdown_timer (int seconds)
         int fifo_fd = 0;
         if (fifo_flag) {
                 /* fifo to write to instead of stdout */
-                char fifo_path[64];
-                snprintf(fifo_path, sizeof(fifo_path), "%s%s", "/tmp/bar/", "fifo_ctimer");
                 struct stat st;
-                if (stat(fifo_path, &st) == -1) {
-                        if (mkfifo(fifo_path, 0666) == -1) {
+                if (stat(PIPE_PATH, &st) == -1) {
+                        if (mkfifo(PIPE_PATH, 0666) == -1) {
                                 perror("mkfifo");
                                 fifo_flag = 0;
                                 goto print_cntdwn;
                         }
                 }
-                fifo_fd = open(fifo_path, O_WRONLY);
+                fifo_fd = open(PIPE_PATH, O_WRONLY);
                 if (fifo_fd == -1) {
                         perror("open fifo");
                         fifo_flag = 0;
@@ -211,9 +210,11 @@ void printhelp (char *argv_0)
                         "   [-s short break time]\n"
                         "   [-l long break time]\n"
                         "   [-f frq (sessions before a long break)]\n"
+                        "   [-F output countdown to pipe instead of stdout]\n"
                         "   [-c category (for logging)]\n"
                         "   [-h to print this message and exit]\n"
                         "Use man ctimer for more detailed information\n"
+                        "The pipe for -F is created at /tmp/bar/fifo_ctimer\n"
                         "Default: 5 pomodoros of 25 minutes, 5 then 15m breaks",
                         argv_0);
         exit(EXIT_FAILURE);
