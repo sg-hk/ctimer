@@ -1,14 +1,21 @@
-.TH CTIMER 1 "2025-02-03" "v1.2" "ctimer Manual"
+.TH CTIMER 1 "2025-02-25" "v1.3" "ctimer Manual"
 .SH NAME
-ctimer \- simple pomodoro timer with session logs.
+ctimer \- simple pomodoro timer with session logs
 .SH SYNOPSIS
 .B ctimer
 .RI [ options ]
 .SH DESCRIPTION
 .B ctimer
-is a simple command-line based pomodoro timer that helps manage work and break cycles, as well as keep track of past sessions in a log. The timer notifies the user at the start and end of work periods and breaks, playing a sound. Logs of each session are recorded at the end of every pomodoro as pomdoro_time|category|hh:mm.
-
-A debt of gratitude is owed to Tatsumoto and his nearly-eponymous pomodoro shell script (tatsumato). This started as an adaptation of the script, although it is now fairly different in function.
+is a simple command-line based pomodoro timer that helps manage work and break cycles, as well as keep track of past sessions in a log. The timer notifies the user at the start and end of work periods and breaks, playing a sound. Logs of each session are recorded at the end of every pomodoro as
+.IR pomodoro_time|category|hh:mm .
+.P
+A debt of gratitude is owed to Tatsumoto and his nearly-eponymous pomodoro shell script (tatsumato). This started as an adaptation of that script, although it is now fairly different in function.
+.P
+If both
+.B \-t
+and
+.B \-T
+are set, the timer refuses to run unless you keep the pomodoro length at 25 minutes (the default). In other words, you may define a custom pomodoro time or a custom total session time, but not both, unless the latter is based on the default pomodoro length.
 .SH OPTIONS
 .TP
 .B \-n
@@ -18,7 +25,11 @@ Specify the number of pomodoro sessions.
 Set the duration of each pomodoro session in minutes.
 .TP
 .B \-T
-Set the total target session time in minutes. This overrides individual session settings.
+Set the total target session time in minutes (overrides
+.B \-t
+unless
+.B \-t
+is at its default 25).
 .TP
 .B \-s
 Duration of short breaks in minutes.
@@ -30,14 +41,22 @@ Duration of long breaks in minutes.
 Frequency of pomodoros before a long break occurs.
 .TP
 .B \-c
-Category for logging the session, useful for tracking different types of tasks.
+Category for logging the session, useful for tracking different types of tasks. If omitted, the category defaults to "uncategorized".
+.TP
+.B \-F
+Output the remaining countdown each second to the named pipe
+.I /tmp/bar/fifo_ctimer
+instead of standard output. 
 .TP
 .B \-h
 Display help and exit.
 .SH EXAMPLES
 To start a session with 5 pomodoros, each lasting 25 minutes, with short breaks of 5 minutes and long breaks every 4 sessions lasting 15 minutes:
+.P
 .nf
-\fBctimer -n 5 -t 25 -s 5 -l 15 -f 4\fR
+.ft B
+ctimer -n 5 -t 25 -s 5 -l 15 -f 4
+.ft
 .fi
 .SH AUTHOR
 Written by sg-hk.

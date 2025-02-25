@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <time.h>
@@ -16,6 +17,7 @@
 
 char start_msg[512], over_msg[128];
 char startfp[128], endfp[128], overfp[128];
+int fifo_flag = 0;
 
 void initialize_strings
 (int n, int ptime, int sbktime, int lbktime, int ttime, int wtime)
@@ -88,12 +90,44 @@ void herbe (char *msg)
 
 void countdown_timer (int seconds) 
 {
+        int fifo_fd = 0;
+        if (fifo_flag) {
+                /* fifo to write to instead of stdout */
+                char fifo_path[64];
+                snprintf(fifo_path, sizeof(fifo_path), "%s%s", "/tmp/bar/", "fifo_ctimer");
+                struct stat st;
+                if (stat(fifo_path, &st) == -1) {
+                        if (mkfifo(fifo_path, 0666) == -1) {
+                                perror("mkfifo");
+                                fifo_flag = 0;
+                                goto print_cntdwn;
+                        }
+                }
+                fifo_fd = open(fifo_path, O_WRONLY);
+                if (fifo_fd == -1) {
+                        perror("open fifo");
+                        fifo_flag = 0;
+                        goto print_cntdwn;
+                }
+        }
+
+print_cntdwn:
         for (int elapsed = 0; elapsed < seconds; ++elapsed) {
                 int remaining = seconds - elapsed;
-                printf("\r%02u:%02u\n", remaining / 60, remaining % 60);
-                fflush(stdout);
+                if (fifo_flag && fifo_fd)
+                        dprintf(fifo_fd, 
+                                "%02u:%02u\n", 
+                                remaining / 60, remaining % 60);
+                else {
+                        printf("\r%02u:%02u", 
+                                remaining / 60, remaining % 60);
+                        fflush(stdout);
+                }
                 sleep(1);
         }
+
+        if (fifo_fd)
+                close(fifo_fd);
 }
 
 
@@ -115,7 +149,8 @@ void log_pomodoro (int ptime, char *category)
 
         char entry[64];
         snprintf(entry, sizeof(entry), "%d|%s|%d:%d\n", 
-                        ptime, category, t->tm_hour, t->tm_min);
+                        ptime, category ? category : "uncategorized", 
+                        t->tm_hour, t->tm_min);
         fputs(entry, log);
         fclose(log);
 }
@@ -195,7 +230,7 @@ int main (int argc, char **argv)
         char *category = NULL;
 
         int opt;
-        while ((opt = getopt(argc, argv, "n:t:T:s:l:f:c:")) != -1) {
+        while ((opt = getopt(argc, argv, "n:t:T:s:l:f:Fc:")) != -1) {
                 switch (opt) {
                         case 'n':
                                 n = atoi(optarg);
@@ -215,6 +250,9 @@ int main (int argc, char **argv)
                         case 'f':
                                 frq = atoi(optarg);
                                 break;
+                        case 'F':
+                                fifo_flag = 1;
+                                break;
                         case 'c':
                                 category = optarg;
                                 break;
@@ -229,17 +267,17 @@ int main (int argc, char **argv)
         /* derive rest of integers */
         int n_lbk = (n - 1) / frq; // -1 because no break at end
         int wtime;
-        if (ttime != 0 && ptime != 25) {
-                /* cannot determine custom total time AND custom pom time */
-                return 1;
+        if (ttime != 0 && ptime != 0) {
+                /* change n if ttime and ptime are given */
+                n = (ttime - lbktime * n_lbk - sbktime * (n - 1 - n_lbk)) / ptime;
+                wtime = ptime * n;
         } else if (ttime == 0) {
-                /* custom pom time */
+                /* get ttime if custom ptime */
                 wtime = ptime * n;
                 ttime = wtime + lbktime * n_lbk + sbktime * (n - 1 - n_lbk);
         } else {
-                /* custom total time */
-                ptime = (ttime - lbktime * n_lbk - sbktime * (n - 1 - n_lbk)) 
-                        / n;	
+                /* get ptime if custome ttime */
+                ptime = (ttime - lbktime * n_lbk - sbktime * (n - 1 - n_lbk)) / n;
                 wtime = ptime * n;
         }
 

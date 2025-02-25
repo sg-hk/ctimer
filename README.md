@@ -10,12 +10,5 @@ Uses [herbe](https://github.com/dudik/herbe/) for notifications, and printfs the
 To install:
 ```make && make install```
 
-
-You could do the following to get the countdown in your status bar:
-```sh
-mkfifo /tmp/ctimer
-ctimer > /tmp/ctimer &
-while read line; do
-    xsetroot -name "$line"
-done < /tmp/ctimer
-```
+To uninstall:
+```make clean && sudo make uninstall```
