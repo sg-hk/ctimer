@@ -117,8 +117,8 @@ initialize_strings(ctimer_state *state,
                         home, CTIMER, "over.mp3");
         snprintf(state->start_msg, sizeof(state->start_msg),
                         "ctimer v1.4 started! good luck\n"
-                        "%d pomodoros, each: %d m; %d m short breaks; %d m long "
-                        "break\n"
+                        "%d pomodoros, each: %d m" 
+                        "%d m short breaks; %d m long break\n"
                         "total: %d m; work: %d m",
                         n, ptime, sbktime, lbktime, total_time, work_time);
         snprintf(state->over_msg, sizeof(state->over_msg),
@@ -169,14 +169,12 @@ pomodoro(int n, int ptime, int sbktime, int lbktime, int frq,
 {
         for (int i = 0; i < n; ++i) {
                 play_sound(state->startfp);
-                if (i == 0) {
+                if (i == 0)
                         notify(state->start_msg);
-                } else {
-                        char pom_msg[128];
-                        snprintf(pom_msg, sizeof(pom_msg),
-                                        "[%d/%d] pomodoro: %d m", i + 1, n, ptime);
-                        notify(pom_msg);
-                }
+
+                char pom_msg[128];
+                snprintf(pom_msg, sizeof(pom_msg),
+                                "[%d/%d] pomodoro: %d m", i + 1, n, ptime);
                 countdown_timer(ptime * 60, state);
                 if (i == n - 1) {
                         play_sound(state->overfp);
