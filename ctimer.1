@@ -1,0 +1,67 @@
+.TH CTIMER 1 "2025-03-11" "v1.4" "ctimer manual"
+.SH NAME
+ctimer \- simple pomodoro timer
+
+.SH SYNOPSIS
+.B ctimer
+.RI [ options ]
+
+.SH DESCRIPTION
+.B ctimer
+is a straightforward command-line pomodoro timer that plays audio alerts 
+via mpv and sends desktop notifications (either via
+.B notify-send
+or
+.B herbe
+if compiled with
+.BR make\ ENABLE_HERBE=1 ).
+It tracks the specified number of pomodoros (work sessions) and inserts short 
+and long breaks as needed.
+
+By default, the program runs 5 pomodoros of 25 minutes each, with 5-minute 
+short breaks and a 15-minute long break every 4 pomodoros.
+
+.P
+If invoked with the
+.B \-F
+option, the remaining countdown time is written every second to
+.I /tmp/bar/fifo_ctimer
+instead of standard output, allowing custom scripting in status bars or panels.
+
+.SH OPTIONS
+.TP
+.B \-n
+Number of pomodoro sessions (default: 5).
+.TP
+.B \-t
+Duration of each pomodoro in minutes (default: 25).
+.TP
+.B \-s
+Duration of each short break in minutes (default: 5).
+.TP
+.B \-l
+Duration of each long break in minutes (default: 15).
+.TP
+.B \-f
+Frequency of pomodoros before a long break occurs (default: 4).
+.TP
+.B \-F
+Output the countdown (MM:SS) to
+.I /tmp/bar/fifo_ctimer
+instead of standard output.
+.TP
+.B \-h
+Show help and exit.
+
+.SH EXAMPLES
+To start a session with 5 pomodoros (25 minutes each), 5-minute short breaks, 
+and 15-minute long breaks every 4 pomodoros:
+.P
+.nf
+.ft B
+ctimer -n 5 -t 25 -s 5 -l 15 -f 4
+.ft
+.fi
+
+.SH AUTHOR
+Written by sg-hk (v1.4).
