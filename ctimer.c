@@ -16,64 +16,46 @@ static const char PIPE_PATH[] = "/tmp/bar/fifo_ctimer";
 
 typedef struct {
         int  fifo_flag;
-        char start_msg[512];
-        char over_msg[128];
-        char startfp[128];
-        char endfp[128];
-        char overfp[128];
+        char start_msg[128];
+        char over_msg[64];
+        char startfp[64];
+        char endfp[64];
+        char overfp[64];
 } ctimer_state;
 
-/* helper to get home directory */
-static char *
-get_home(void)
-{
-        char *home = getenv("HOME");
-        if (!home) {
-                fprintf(stderr, "error: home not set\n");
-                exit(EXIT_FAILURE);
-        }
-        return home;
-}
-
-/* notification using herbe (if "make ENABLE_HERBE=1") or notify-send */
+/* notification using herbe (if "make ENABLE_HERBE=1"), otherwise default notifications */
 #ifdef HERBE 
 static void 
 notify(const char *msg)
 {
-        pid_t pid = fork();
-        if (pid == -1) {
-                perror("herbe fork");
-                return;
-        } else if (pid == 0) {
-                char cmd[512];
-                snprintf(cmd, sizeof(cmd), "herbe '%s'", msg);
-                execl("/bin/sh", "sh", "-c", cmd, (char *)NULL);
-                perror("execl herbe");
-                exit(EXIT_FAILURE);
-        } else {
-                int status;
-                waitpid(pid, &status, WNOHANG);
-        }
+        char cmd[256];
+        snprintf(cmd, sizeof(cmd), "herbe '%s'", msg);
+        system(cmd);
+}
+#elif defined(__APPLE__)
+static void 
+notify(const char *msg)
+{
+        char cmd[256];
+        snprintf(cmd, sizeof(cmd), "osascript -e \
+                'display notification \"%s\" with title \"ctimer\"'", msg);
+        system(cmd);
+}
+#elif defined(_WIN32)
+static void 
+notify(const char *msg)
+{
+        char cmd[256];
+        snprintf(cmd, sizeof(cmd), "msg * /time:5 \"%s\"", msg);
+        system(cmd);
 }
 #else
 static void 
 notify(const char *msg)
 {
-        pid_t pid = fork();
-        if (pid == -1) {
-                perror("notify-send fork");
-                return;
-        } else if (pid == 0) {
-                char cmd[512];
-                snprintf(cmd, sizeof(cmd),
-                                "notify-send 'ctimer' '%s'", msg);
-                execl("/bin/sh", "sh", "-c", cmd, (char *)NULL);
-                perror("execl notify-send");
-                exit(EXIT_FAILURE);
-        } else {
-                int status;
-                waitpid(pid, &status, WNOHANG);
-        }
+        char cmd[256];
+        snprintf(cmd, sizeof(cmd), "notify-send 'ctimer' '%s'", msg);
+        system(cmd);
 }
 #endif
 
@@ -108,13 +90,20 @@ initialize_strings(ctimer_state *state,
                    int n, int ptime, int sbktime, int lbktime, 
                    int total_time, int work_time)
 {
-        char *home = get_home();
+
+        char *home = getenv("HOME");
+        if (!home) {
+                fprintf(stderr, "error: home not set\n");
+                exit(EXIT_FAILURE);
+        }
+
         snprintf(state->startfp, sizeof(state->startfp), "%s%s%s",
                         home, CTIMER, "start.mp3");
         snprintf(state->endfp, sizeof(state->endfp), "%s%s%s",
                         home, CTIMER, "end.mp3");
         snprintf(state->overfp, sizeof(state->overfp), "%s%s%s",
                         home, CTIMER, "over.mp3");
+
         snprintf(state->start_msg, sizeof(state->start_msg),
                         "ctimer v1.4 started! good luck\n"
                         "%d pomodoros, each: %d m" 
