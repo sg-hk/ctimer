@@ -41,14 +41,6 @@ notify(const char *msg)
                 'display notification \"%s\" with title \"ctimer\"'", msg);
         system(cmd);
 }
-#elif defined(_WIN32)
-static void 
-notify(const char *msg)
-{
-        char cmd[256];
-        snprintf(cmd, sizeof(cmd), "msg * /time:5 \"%s\"", msg);
-        system(cmd);
-}
 #else
 static void 
 notify(const char *msg)

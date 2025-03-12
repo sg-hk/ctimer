@@ -5,7 +5,7 @@ Defaults to 5 pomodoros of 25 minutes, with 5-minute short breaks
 and a 15-minute long break every 4 sessions.
 
 Uses [mpv](https://mpv.io/) for sound and [herbe](https://github.com/dudik/herbe/) 
-or system defaults (Unix, Windows) for notifications. 
+or system defaults for notifications. Tested on Linux and Mac OS.
 Prints the countdown to stdout or writes it to a named pipe if `-F` is set. 
 
 Stores sound files in `~/.local/share/ctimer`.
